@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini Rave Voice</title>
+<style>
+/* Рейв фон */
+body {
+  margin:0; padding:0;
+  font-family: Arial, sans-serif;
+  background: linear-gradient(-45deg, #ff00ff, #00ffff, #ff0000, #00ff00);
+  background-size: 400% 400%;
+  animation: gradientBG 15s ease infinite;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+@keyframes gradientBG {
+  0% {background-position:0% 50%;}
+  50% {background-position:100% 50%;}
+  100% {background-position:0% 50%;}
+}
+
+header {
+  width: 100%;
+  padding: 15px;
+  text-align: center;
+  font-size: 24px;
+  text-shadow: 0 0 10px #fff;
+}
+
+/* Контейнеры */
+#controls {
+  width: 90%;
+  max-width: 500px;
+  margin: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+input { padding:10px; border-radius:5px; border:none; flex:1; }
+button { padding:10px; border:none; border-radius:10px; cursor:pointer;
+  background:#ff00ff; box-shadow:0 0 10px #ff00ff,0 0 20px #ff00ff; transition:0.3s; color:#fff;
+}
+button:hover { box-shadow:0 0 20px #00ffff,0 0 30px #00ffff; }
+
+#results { width:90%; max-width:600px; margin-top:20px;}
+.video { display:flex; align-items:center; background: rgba(0,0,0,0.4); padding:10px; margin-bottom:10px; border-radius:10px; cursor:pointer;}
+.video img { width:120px; border-radius:8px; margin-right:10px;}
+#player { margin-top:20px; width:90%; max-width:800px; height:400px;}
+#chat { width:90%; max-width:500px; height:150px; background: rgba(0,0,0,0.4); overflow-y:auto; border-radius:10px; padding:10px; margin-top:10px;}
+@media(max-width:600px){#player{height:220px;} .video img{width:80px;}}
+</style>
+</head>
+<body>
+<header>🎬 Mini Rave Voice</header>
+
+<div id="controls">
+  <div style="display:flex; gap:5px;">
+    <input type="text" id="searchInput" placeholder="Поиск YouTube">
+    <button id="searchBtn">🔍</button>
+  </div>
+  <div style="display:flex; gap:5px;">
+    <input type="text" id="linkInput" placeholder="Вставь ссылку на видео (YouTube/Vimeo/VK/mp4)">
+    <button id="playLinkBtn">▶️ Воспроизвести</button>
+  </div>
+  <div style="display:flex; gap:5px;">
+    <input type="text" id="chatInput" placeholder="Сообщение для озвучки">
+    <button id="speakBtn">🔊 Говорить</button>
+  </div>
+</div>
+
+<div id="results"></div>
+<div id="player"></div>
+<div id="chat"></div>
+
+<script>
+const apiKey = "YOUR_YOUTUBE_API_KEY"; // вставь свой YouTube API ключ
+
+// Поиск видео на YouTube
+document.getElementById("searchBtn").addEventListener("click", ()=>{
+  const query=document.getElementById("searchInput").value;
+  fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=5&q=${encodeURIComponent(query)}&key=${apiKey}`)
+  .then(res=>res.json())
+  .then(data=>{
+    const resultsDiv=document.getElementById("results");
+    resultsDiv.innerHTML="";
+    data.items.forEach(item=>{
+      const videoId=item.id.videoId;
+      const title=item.snippet.title;
+      const thumb=item.snippet.thumbnails.medium.url;
+      const div=document.createElement("div");
+      div.className="video";
+      div.innerHTML=`<img src="${thumb}"><span>${title}</span>`;
+      div.addEventListener("click", ()=>playVideo(`https://www.youtube.com/watch?v=${videoId}`));
+      resultsDiv.appendChild(div);
+    });
+  });
+});
+
+// Воспроизведение видео по ссылке
+document.getElementById("playLinkBtn").addEventListener("click", ()=>{
+  const url=document.getElementById("linkInput").value.trim();
+  if(url) playVideo(url);
+});
+
+function playVideo(url){
+  const playerDiv=document.getElementById("player");
+  // YouTube
+  if(url.includes("youtube.com")||url.includes("youtu.be")){
+    let id=url.split("v=")[1]||url.split("youtu.be/")[1];
+    if(id && id.includes("&")) id=id.split("&")[0];
+    playerDiv.innerHTML=`<iframe src="https://www.youtube.com/embed/${id}?autoplay=1" allowfullscreen></iframe>`;
+  }
+  // Vimeo
+  else if(url.includes("vimeo.com")){
+    let id=url.split("/").pop();
+    playerDiv.innerHTML=`<iframe src="https://player.vimeo.com/video/${id}?autoplay=1" allowfullscreen></iframe>`;
+  }
+  // VK Video
+  else if(url.includes("vk.com/video")){
+    playerDiv.innerHTML=`<iframe src="${url}" allowfullscreen></iframe>`;
+  }
+  // mp4
+  else if(url.endsWith(".mp4")){
+    playerDiv.innerHTML=`<video src="${url}" controls autoplay style="width:100%;height:100%;border-radius:10px;"></video>`;
+  }
+  else{ alert("Неизвестный формат видео"); }
+}
+
+// Голосовая озвучка текста
+document.getElementById("speakBtn").addEventListener("click", ()=>{
+  const msg=document.getElementById("chatInput").value.trim();
+  if(msg){
+    const utter=new SpeechSynthesisUtterance(msg);
+    speechSynthesis.speak(utter);
+    // вывод в чат
+    const chatDiv=document.getElementById("chat");
+    chatDiv.innerHTML+=`<div>${msg}</div>`;
+    chatDiv.scrollTop=chatDiv.scrollHeight;
+    document.getElementById("chatInput").value="";
+  }
+});
+</script>
+</body>
+</html>
